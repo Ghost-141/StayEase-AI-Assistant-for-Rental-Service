@@ -2,6 +2,9 @@ from typing import List, Dict, Any
 from langchain_core.messages import HumanMessage
 from agent.graph import graph
 from repository.chat_repository import ChatRepository
+from core.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 class ChatService:
     """
@@ -17,6 +20,7 @@ class ChatService:
         """
         Process a user message through the agentic graph and persist state.
         """
+        logger.info(f"Processing message for conversation {conversation_id}...")
         # Load history via repository
         history = self.repository.load_history(conversation_id)
         
@@ -32,6 +36,7 @@ class ChatService:
         self.repository.save_history(conversation_id, final_state["messages"])
         
         last_message = final_state["messages"][-1]
+        logger.info(f"Successfully processed message for conversation {conversation_id}.")
         
         return {
             "response": last_message.content,
