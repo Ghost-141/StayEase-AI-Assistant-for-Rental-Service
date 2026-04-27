@@ -3,7 +3,6 @@
 ## 1. Send Message
 **Endpoint:** `POST /api/chat/{conversation_id}/message`
 
-**Description:** Send a user message to the AI assistant.
 
 ### Request Schema
 | Field     | Type     | Description                   |
@@ -122,7 +121,44 @@
 }
 ```
 
----
+## Error Response
+
+### 400 Bad Request (Invalid Message Format)
+This occurs if the user sends an empty string or the JSON body is malformed.
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "message"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+
+### 500 Internal Server Error (Backend Failure)
+This occurs if the LLM provider (Groq) or the Database (Neon) is unreachable.
+```json
+{
+  "detail": "Internal Server Error. Please check server logs."
+}
+```
+
+### 422 Unprocessable Entity (Validation Error)
+This occurs if the LLM provides invalid arguments to a tool (e.g., wrong date format).
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "check_in_date"],
+      "msg": "invalid date format",
+      "type": "value_error.date"
+    }
+  ]
+}
+```
+
 
 ## 2. Get Conversation History
 **Endpoint:** `GET /api/chat/{conversation_id}/history`
@@ -151,6 +187,7 @@
   ]
 }
 ```
+
 
 ## Realistic Example
 ```json
