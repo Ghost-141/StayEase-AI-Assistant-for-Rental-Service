@@ -1,6 +1,9 @@
 import time
 from psycopg_pool import ConnectionPool
 from core.config import settings
+from core.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 # Initialize the connection pool using the DATABASE_URL from settings
 # We use a synchronous pool as the current graph implementation uses sync invoke.
@@ -14,14 +17,17 @@ if settings.DATABASE_URL:
             conninfo=settings.DATABASE_URL,
             min_size=1,
             max_size=10,
-            # wait_timeout is how long to wait for a connection before raising an error
             timeout=30.0,
+            # This checks if the connection is still alive before giving it to you
+            check=ConnectionPool.check_connection,
+            # Ensure the pooler connection string works correctly
+            kwargs={"sslmode": "require"}
         )
-        print("Database connection pool initialized successfully.")
+        logger.info("Database connection pool initialized successfully.")
     except Exception as e:
-        print(f"Error initializing database connection pool: {e}")
+        logger.error(f"Error initializing database connection pool: {e}", exc_info=True)
 else:
-    print("DATABASE_URL not found in settings. Pool not initialized.")
+    logger.warning("DATABASE_URL not found in settings. Pool not initialized.")
 
 def get_db_connection():
     """
