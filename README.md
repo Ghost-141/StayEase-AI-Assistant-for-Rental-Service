@@ -4,7 +4,8 @@ StayEase is an AI-powered rental service assistant designed for guests in Bangla
 
 ## 1. System Overview
 
-The system utilizes a modern agentic architecture utilizing LangGraph and LLM as an agent brain. It uses PostgreSQL database to store chat and hotel info.
+The system is built on a modern agent-based architecture using LangGraph, with a Groq-powered LLM acting as the agent’s brain. It leverages a PostgreSQL database to store chat history and hotel information. If a query falls outside the scope of its available tools, the agent forwards it directly to the human for manual handling.
+
 
 ```mermaid
 graph TD
@@ -37,6 +38,8 @@ graph TD
 5.  **Tool Execution:** Queries the database for listings matching the criteria.
 6.  **Agent (LLM Node):** Formats the tool output into a friendly response.
 7.  **Response:** "I found two options in Cox's Bazar: Ocean View Resort (5,500 BDT/night) and Beachside Haven (4,200 BDT/night). Which one would you like to see more details for?"
+
+**N.B:** A detailed conversation of property booking has been documentaed on api docs.
 
 ## 3. LangGraph State Design
 
@@ -118,7 +121,7 @@ Persists the state and history of the AI agent's chat sessions.
 ## 7. Setup the Agent 
 - Copy the repo and use following command:
 ```bash
-cd StayEase-AI-Assistant-for-Rental-Service
+cd StayEase-AI-Assistant
 python -m venv .venv
 pip install uv
 uv sync
