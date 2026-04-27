@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import Depends
 from services.chat_service import ChatService
 
+
 def get_chat_service() -> ChatService:
     """
     Dependency provider for ChatService.
@@ -9,5 +10,6 @@ def get_chat_service() -> ChatService:
     """
     return ChatService()
 
-# Annotated type for easier injection
+
+# Annotated type for global dependency injection of ChatService
 ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
