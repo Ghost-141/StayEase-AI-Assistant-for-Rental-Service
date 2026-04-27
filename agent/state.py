@@ -1,5 +1,6 @@
-from typing import Annotated, TypedDict, Optional, Dict, Any
+from typing import Annotated, TypedDict, Optional, Dict, Any, List
 from langgraph.graph.message import add_messages
+from langchain_core.messages import BaseMessage
 
 
 class State(TypedDict):
@@ -13,7 +14,7 @@ class State(TypedDict):
         escalate: Boolean flag to indicate if the request should be handled by a human.
     """
 
-    messages: Annotated[list, add_messages]
+    messages: Annotated[List[BaseMessage], add_messages]
     search_params: Optional[Dict[str, Any]]
     selected_listing: Optional[Dict[str, Any]]
     escalate: bool

@@ -16,8 +16,7 @@ async def send_message(
     Endpoint to send a message to the AI agent.
     """
     try:
-        logger.info(f"Received message for conversation: {conversation_id}")
-        # Use the injected service instance
+        logger.info(f"Received message for conversation_id: {conversation_id}")
         result = service.process_message(conversation_id, request.message)
 
         return ChatResponse(
@@ -26,10 +25,12 @@ async def send_message(
         )
 
     except Exception as e:
-        logger.error(f"Error in send_message for {conversation_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error in send_message for id: {conversation_id}: {e}", exc_info=True
+        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Internal Server Error. Please check server logs."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error. Please check server logs.",
         )
 
 
@@ -39,12 +40,11 @@ async def get_chat_history(conversation_id: str, service: ChatServiceDep):
     Endpoint to retrieve the conversation history.
     """
     try:
-        logger.info(f"Retrieving history for conversation: {conversation_id}")
-        # Use the injected service instance
+        logger.info(f"Retrieving history for conversation_id: {conversation_id}")
         history = service.get_conversation_history(conversation_id)
 
         if not history:
-            logger.warning(f"No history found for conversation: {conversation_id}")
+            logger.warning(f"No history found for conversation_id: {conversation_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation history not found.",
@@ -54,8 +54,10 @@ async def get_chat_history(conversation_id: str, service: ChatServiceDep):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in get_chat_history for {conversation_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error in get_chat_history for id: {conversation_id}: {e}", exc_info=True
+        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail="Internal Server Error. Please check server logs."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error. Please check server logs.",
         )
