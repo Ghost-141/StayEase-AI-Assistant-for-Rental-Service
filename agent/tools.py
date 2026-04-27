@@ -1,10 +1,9 @@
 from langchain.tools import tool
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 
 
 # ============================================================================
-# Pydantic Input/Output Models for Tools
+# Pydantic Input Models for Tools
 # ============================================================================
 
 
@@ -12,67 +11,27 @@ class SearchInput(BaseModel):
     """Input parameters for searching available properties."""
 
     location: str = Field(
-        ..., description="City or area name (e.g., 'Cox's Bazar', 'Dhaka', 'Sylhet')"
+        ...,
+        description="City or area name in Bangladesh (e.g., 'Cox's Bazar', 'Dhaka', 'Sylhet')",
     )
     check_in_date: str = Field(..., description="Check-in date in YYYY-MM-DD format")
-    nights: int = Field(..., ge=1, description="Number of nights (positive integer)")
-    guests: int = Field(..., ge=1, description="Number of guests (positive integer)")
+    nights: int = Field(..., ge=1, description="Number of nights to stay")
+    guests: int = Field(..., ge=1, description="Number of guests to stay")
 
 
 class ListingDetailsInput(BaseModel):
     """Input parameters for retrieving listing details."""
 
-    listing_id: int = Field(..., description="The unique identifier of the property")
+    listing_id: int = Field(..., description="The unique ID of the property listing")
 
 
 class BookingInput(BaseModel):
     """Input parameters for creating a booking."""
 
-    listing_id: int = Field(..., description="The unique identifier of the property")
-    check_in_date: str = Field(..., description="Check-in date in YYYY-MM-DD format")
-    nights: int = Field(..., ge=1, description="Number of nights")
+    listing_id: int = Field(..., description="The ID of the property to book")
     guest_name: str = Field(..., description="Full name of the guest")
-    guest_email: str = Field(..., description="Email address of the guest")
-    guest_phone: str = Field(..., description="Phone number of the guest")
-
-
-class SearchResult(BaseModel):
-    """Output structure for a single search result."""
-
-    id: int
-    name: str
-    location: str
-    price_per_night: int
-    rating: Optional[float] = None
-
-
-class ListingDetails(BaseModel):
-    """Output structure for detailed listing information."""
-
-    id: int
-    name: str
-    location: str
-    price_per_night: int
-    host_name: str
-    host_contact: str
-    check_in_time: str
-    check_out_time: str
-    cancellation_policy: str
-    available_dates: List[str] = Field(default_factory=list)
-
-
-class BookingConfirmation(BaseModel):
-    """Output structure for booking confirmation."""
-
-    booking_id: str
-    status: str
-    listing_name: str
-    check_in_date: str
-    nights: int
-    total_price: int
-    confirmation_message: str
-    payment_url: str
-    cancellation_policy: str
+    check_in_date: str = Field(..., description="Check-in date (YYYY-MM-DD)")
+    nights: int = Field(..., ge=1, description="Number of nights")
 
 
 # ============================================================================
@@ -80,63 +39,38 @@ class BookingConfirmation(BaseModel):
 # ============================================================================
 
 
-@tool
+@tool(args_schema=SearchInput)
 def search_available_properties(
     location: str, check_in_date: str, nights: int, guests: int
-) -> List[SearchResult]:
-    """Search for available properties based on location, check-in date, number of nights, and guests."""
-    return [
-        SearchResult(
-            id=1,
-            name="Cozy Beachside Cottage",
-            location=location,
-            price_per_night=150,
-            rating=4.5,
-        ),
-        SearchResult(
-            id=2,
-            name="Modern City Apartment",
-            location=location,
-            price_per_night=100,
-            rating=4.0,
-        ),
-    ]
+) -> str:
+    """Search for available properties in a specific location for given dates and guests."""
+    # Mocked response
+    return (
+        f"Found 2 properties in {location} for {check_in_date}:\n"
+        "1. Ocean View Resort - 5,500 BDT/night (ID: 101)\n"
+        "2. Beachside Haven - 4,200 BDT/night (ID: 102)"
+    )
 
 
-@tool
-def get_listing_details(listing_id: int) -> Dict[str, Any]:
-    return {
-        "id": listing_id,
-        "name": "Ocean View Resort",
-        "location": "Cox's Bazar",
-        "price_per_night": 5500,
-        "host_name": "Ahmed Khan",
-        "host_contact": "+8801812345678",
-        "check_in_time": "14:00",
-        "check_out_time": "12:00",
-        "cancellation_policy": "Free cancellation up to 7 days before check-in",
-        "available_dates": ["2026-05-01", "2026-05-02", "2026-05-03"],
+@tool(args_schema=ListingDetailsInput)
+def get_listing_details(listing_id: int) -> str:
+    """Retrieve detailed information about a specific property by its ID."""
+    # Mocked response
+    details = {
+        101: "Ocean View Resort: Located at Kolatoli Beach. Amenities: AC, Wifi, Breakfast. Policy: Free cancellation.",
+        102: "Beachside Haven: Cozy room near the beach. Amenities: Wifi, Balcony. Policy: Non-refundable.",
     }
+    return details.get(listing_id, "Property not found.")
 
 
-@tool
+@tool(args_schema=BookingInput)
 def create_booking(
-    listing_id: int,
-    check_in_date: str,
-    nights: int,
-    guest_name: str,
-    guest_email: str,
-    guest_phone: str,
-) -> Dict[str, Any]:
-
-    return {
-        "booking_id": f"BOOK-2026-{listing_id}001",
-        "status": "pending",
-        "listing_name": "Ocean View Resort",
-        "check_in_date": check_in_date,
-        "nights": nights,
-        "total_price": 5500 * nights + int(5500 * nights * 0.05),  # Add 5% tax
-        "confirmation_message": f"Your booking is confirmed! Booking ID: BOOK-2026-{listing_id}001",
-        "payment_url": f"https://stayease.com/payment/BOOK-2026-{listing_id}001",
-        "cancellation_policy": "Free cancellation up to 7 days before check-in",
-    }
+    listing_id: int, guest_name: str, check_in_date: str, nights: int
+) -> str:
+    """Create a booking for a property."""
+    # Mocked response
+    return (
+        f"SUCCESS: Booking created for {guest_name} at Property ID {listing_id}.\n"
+        f"Check-in: {check_in_date} for {nights} nights.\n"
+        f"Booking ID: SE-{listing_id}-999"
+    )
