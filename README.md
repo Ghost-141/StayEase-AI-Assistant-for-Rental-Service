@@ -4,15 +4,27 @@ StayEase is an AI-powered rental service assistant designed for guests in Bangla
 
 ## 1. System Overview
 
-The system utilizes a modern agentic architecture to provide a seamless conversational experience. It bridges natural language queries with structured property data.
+The system utilizes a modern agentic architecture utilizing LangGraph and LLM as an agent brain. It uses PostgreSQL database to store chat and hotel info.
 
 ```mermaid
 graph TD
-    User((Guest)) --> FastAPI[FastAPI Backend]
-    FastAPI --> LangGraph[LangGraph Agent]
-    LangGraph --> LLM[Groq / OpenRouter LLM]
-    LangGraph --> DB[(PostgreSQL Database)]
-    LangGraph --> Tools[Tools: Search, Details, Book]
+    User((User)) --> FastAPI[FastAPI Backend]
+    FastAPI --> ChatService[Chat Service]
+    ChatService --> DB[(Neon PostgreSQL)]
+    ChatService --> LangGraph{LangGraph Agent}
+
+    subgraph LangGraph_Engine
+        direction TB
+        assistant[Assistant Node] --> route{Routing Logic}
+        route -- "Tool Call" --> tools[Tools Node]
+        route -- "Out of Scope" --> escalate[Escalate Node]
+        tools --> assistant
+    end
+
+    LangGraph --> assistant
+    assistant <--> LLM[Groq LLM]
+    tools <--> DB
+    escalate --> Human((Human Support))
 ```
 
 ## 2. Conversation Flow
@@ -30,12 +42,12 @@ graph TD
 
 The `State` object maintains the context of the conversation and the assistant's internal status.
 
-| Field Name | Type | Description |
-| :--- | :--- | :--- |
-| `messages` | `list[BaseMessage]` | Stores the conversation history (Input/Output). |
-| `search_params` | `dict` | Persists extracted search criteria across turns. |
-| `selected_listing` | `dict` | Stores details of the property currently being discussed. |
-| `escalate` | `bool` | Flag to signal hand-off to a human agent. |
+| Field Name         | Type                | Description                                               |
+| :----------------- | :------------------ | :-------------------------------------------------------- |
+| `messages`         | `list[BaseMessage]` | Stores the conversation history (Input/Output).           |
+| `search_params`    | `dict`              | Persists extracted search criteria across turns.          |
+| `selected_listing` | `dict`              | Stores details of the property currently being discussed. |
+| `escalate`         | `bool`              | Flag to signal hand-off to a human agent.                 |
 
 ## 4. Node Design (3 Nodes)
 
@@ -56,15 +68,13 @@ The `State` object maintains the context of the conversation and the assistant's
 
 ## 5. Tool Definitions
 
-1.  **`search_available_properties`**
-    *   *Params:* `location`, `check_in_date`, `nights`, `guests`.
-    *   *Output:* List of available property objects.
-2.  **`get_listing_details`**
-    *   *Params:* `listing_id`.
-    *   *Output:* Full details (amenities, host info, cancellation policy).
-3.  **`create_booking`**
-    *   *Params:* `listing_id`, `guest_info`, `dates`.
-    *   *Output:* Booking confirmation ID and summary.
+The agent has access to the following 3 tools to interact with the StayEase platform data:
+
+| Tool Name                         | Parameters                                            | Output Format                                                        | When the Agent Uses It                                                       |
+| :-------------------------------- | :---------------------------------------------------- | :------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
+| **`search_available_properties`** | `location`, `check_in_date`, `nights`, `guests`       | A formatted string listing property names, prices, and IDs.          | When a guest asks to find available rooms or provides search criteria.       |
+| **`get_listing_details`**         | `listing_id`                                          | A detailed summary of the property including amenities and policies. | When a guest asks for more info about a property or provides a specific ID.  |
+| **`create_booking`**              | `listing_id`, `guest_name`, `check_in_date`, `nights` | A success message with a unique Booking ID and total price.          | When a guest confirms they want to proceed with a reservation for a listing. |
 
 ## 6. Database Schema
 
@@ -73,34 +83,49 @@ The system uses three primary tables in a PostgreSQL database (Neon) to manage p
 ### 6.1 `listings`
 Stores detailed information about rental properties.
 
-| Column Name | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `SERIAL` | `PRIMARY KEY` | Unique identifier for each listing. |
-| `name` | `TEXT` | `NOT NULL` | Name of the property. |
-| `location` | `TEXT` | `NOT NULL` | City or area (e.g., Cox's Bazar, Sylhet). |
-| `price_per_night` | `INTEGER` | `NOT NULL` | Price in BDT per night. |
-| `details` | `JSONB` | `DEFAULT '{}'` | Flexible metadata (amenities, policies, ratings). |
-| `available` | `BOOLEAN` | `DEFAULT TRUE` | Flag to indicate current availability. |
+| Column Name       | Data Type | Constraints    | Description                                       |
+| :---------------- | :-------- | :------------- | :------------------------------------------------ |
+| `id`              | `SERIAL`  | `PRIMARY KEY`  | Unique identifier for each listing.               |
+| `name`            | `TEXT`    | `NOT NULL`     | Name of the property.                             |
+| `location`        | `TEXT`    | `NOT NULL`     | City or area (e.g., Cox's Bazar, Sylhet).         |
+| `price_per_night` | `INTEGER` | `NOT NULL`     | Price in BDT per night.                           |
+| `details`         | `JSONB`   | `DEFAULT '{}'` | Flexible metadata (amenities, policies, ratings). |
+| `available`       | `BOOLEAN` | `DEFAULT TRUE` | Flag to indicate current availability.            |
 
 ### 6.2 `bookings`
 Stores records of guest reservations.
 
-| Column Name | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Unique identifier for the booking. |
-| `listing_id` | `INTEGER` | `REFERENCES listings(id)` | Foreign key to the booked property. |
-| `guest_name` | `TEXT` | `NOT NULL` | Full name of the guest. |
-| `check_in` | `DATE` | `NOT NULL` | Start date of the stay. |
-| `nights` | `INTEGER` | `NOT NULL, CHECK (nights > 0)` | Duration of the stay. |
-| `total_price` | `INTEGER` | `NOT NULL` | Total calculated cost in BDT. |
-| `created_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | Timestamp when the booking was created. |
+| Column Name   | Data Type   | Constraints                              | Description                             |
+| :------------ | :---------- | :--------------------------------------- | :-------------------------------------- |
+| `id`          | `UUID`      | `PRIMARY KEY, DEFAULT gen_random_uuid()` | Unique identifier for the booking.      |
+| `listing_id`  | `INTEGER`   | `REFERENCES listings(id)`                | Foreign key to the booked property.     |
+| `guest_name`  | `TEXT`      | `NOT NULL`                               | Full name of the guest.                 |
+| `check_in`    | `DATE`      | `NOT NULL`                               | Start date of the stay.                 |
+| `nights`      | `INTEGER`   | `NOT NULL, CHECK (nights > 0)`           | Duration of the stay.                   |
+| `total_price` | `INTEGER`   | `NOT NULL`                               | Total calculated cost in BDT.           |
+| `created_at`  | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP`              | Timestamp when the booking was created. |
 
 ### 6.3 `conversations`
 Persists the state and history of the AI agent's chat sessions.
 
-| Column Name | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Unique session identifier (`conversation_id`). |
-| `user_id` | `TEXT` | `NULLABLE` | Optional identifier for the guest. |
-| `history` | `JSONB` | `NOT NULL` | Serialized LangGraph message history. |
-| `created_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | When the conversation session started. |
+| Column Name  | Data Type   | Constraints                 | Description                                    |
+| :----------- | :---------- | :-------------------------- | :--------------------------------------------- |
+| `id`         | `TEXT`      | `PRIMARY KEY`               | Unique session identifier (`conversation_id`). |
+| `user_id`    | `TEXT`      | `NULLABLE`                  | Optional identifier for the guest.             |
+| `history`    | `JSONB`     | `NOT NULL`                  | Serialized LangGraph message history.          |
+| `created_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | When the conversation session started.         |
+
+## 7. Setup the Agent 
+
+- Create a `.env` file in the root directory as following:
+
+ ```bash
+ MODEL_NAME=openai/gpt-oss-20b
+ GROQ_API_KEY=
+ DATABASE_URL=
+ ```
+
+- Run the backend with following command: 
+ ```bash
+ python main.py
+ ```
