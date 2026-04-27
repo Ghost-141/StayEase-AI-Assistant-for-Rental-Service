@@ -1,11 +1,16 @@
 import uuid
 from db.db import get_db_connection
 from db.db import pool
+from core.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def create_tables():
     """Create the initial database schema."""
+    logger.info("Creating database tables...")
     queries = [
+        "DROP TABLE IF EXISTS conversations CASCADE;", # Force recreation to update UUID to TEXT
         """
         CREATE TABLE IF NOT EXISTS listings (
             id SERIAL PRIMARY KEY,
@@ -29,7 +34,7 @@ def create_tables():
         """,
         """
         CREATE TABLE IF NOT EXISTS conversations (
-            id UUID PRIMARY KEY,
+            id TEXT PRIMARY KEY,
             user_id TEXT,
             history JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -42,11 +47,12 @@ def create_tables():
             for query in queries:
                 cur.execute(query)
             conn.commit()
-    print("Tables created successfully.")
+    logger.info("Tables created successfully.")
 
 
 def seed_data():
     """Inject dummy data into the listings table."""
+    logger.info("Seeding dummy data into listings table...")
 
     listings = [
         (
@@ -145,19 +151,19 @@ def seed_data():
                 listings,
             )
             conn.commit()
-    print(f"Seeded {len(listings)} listings.")
+    logger.info(f"Seeded {len(listings)} listings successfully.")
 
 
 if __name__ == "__main__":
     try:
-        print("Starting database initialization...")
+        logger.info("Starting database initialization...")
         create_tables()
         seed_data()
-        print("Database initialized successfully with dummy data.")
+        logger.info("Database initialized successfully with dummy data.")
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        logger.error(f"Error initializing database: {e}", exc_info=True)
     finally:
         if pool:
-            print("Closing database connection pool...")
+            logger.info("Closing database connection pool...")
             pool.close()
-            print("Pool closed.")
+            logger.info("Pool closed.")

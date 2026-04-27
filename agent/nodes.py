@@ -1,24 +1,24 @@
-import os
-from dotenv import load_dotenv
+from typing import Dict, Any
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage
 from agent.state import State
 from agent.tools import search_available_properties, get_listing_details, create_booking
+from core.config import settings
 
-load_dotenv()
 # Define the tools for the agent
 tools = [search_available_properties, get_listing_details, create_booking]
+
 llm = ChatGroq(
-    model="openai/gpt-oss-20b",
+    model=settings.MODEL_NAME,
     temperature=0,
     streaming=True,
     reasoning_effort="medium",
-    api_key=os.environ.get("GROQ_API_KEY"),
+    api_key=settings.GROQ_API_KEY,
 )
 assistant_runnable = llm.bind_tools(tools)
 
 
-def assistant(state: State):
+def assistant(state: State) -> Dict[str, Any]:
     """
     Interpretation node: Analyzes user input and decides on tool calls or response.
     Updates the state with the assistant's response/tool calls.
@@ -34,7 +34,7 @@ def assistant(state: State):
     return {"messages": [response]}
 
 
-def escalate(state: State):
+def escalate(state: State) -> Dict[str, Any]:
     """
     Escalation node: Sets the escalation flag and notifies the user.
     """
