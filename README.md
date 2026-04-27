@@ -116,7 +116,13 @@ Persists the state and history of the AI agent's chat sessions.
 | `created_at` | `TIMESTAMP` | `DEFAULT CURRENT_TIMESTAMP` | When the conversation session started.         |
 
 ## 7. Setup the Agent 
-
+- Copy the repo and use following command:
+```bash
+cd StayEase-AI-Assistant-for-Rental-Service
+python -m venv .venv
+pip install uv
+uv sync
+```
 - Create a `.env` file in the root directory as following:
 
  ```bash
